@@ -40,21 +40,27 @@ try:
     OPENAI_API_KEY = get_env_variable("OPENAI_API_KEY")
     embeddings = OpenAIEmbeddings()
 
+    # 벡터 저장소를 생성: 문서를 저장하고 검색하는데 사용
     mode = "async" if USE_ASYNC else "sync"
     pgvector_store = get_vector_store(
         connection_string=CONNECTION_STRING,
         embeddings=embeddings,
-        collection_name="testcollection",
+        collection_name="testcollection", # 벡터저장소 생성시 사용할 컬렉션 이름(컬렉션은 데이터를 그룹화함)
         mode=mode,
     )
+    # 질문과 관련이 높은 문서를 벡터저장소에서 검색하는 역할을 하는 retriever 객체 생성
     retriever = pgvector_store.as_retriever()
+    # 템플릿 설정, 질문(question)과 관련된 문맥(context)을 입력으로 받아 응답을 생성함
     template = """Answer the question based only on the following context:
     {context}
 
     Question: {question}
     """
+    # 템플릿을 사용하여 질문을 처리함
     prompt = ChatPromptTemplate.from_template(template)
+    # 질문에 대한 응답 생성
     model = ChatOpenAI(model_name="gpt-3.5-turbo")
+    # 체인: 질문을 입력받아 응답을 생성하고 응답을 처리하여 최종적인 응답으로 변환함
     chain = (
         {"context": retriever, "question": RunnablePassthrough()}
         | prompt
